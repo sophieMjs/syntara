@@ -8,9 +8,9 @@ const bcrypt = require('bcryptjs');
 // Clase de dominio (lógica de negocio simple)
 //
 class UserEntity {
-    constructor({ name, apellido, email, password, role = 'user', createdAt = new Date() } = {}) {
+    constructor({ name, lastname: lastname, email, password, role = 'user', createdAt = new Date() } = {}) {
         this.name = name;
-        this.apellido = apellido; // <-- AÑADIDO
+        this.lastname = lastname; // <-- AÑADIDO
         this.email = email;
         this.password = password;
         this.role = role;
@@ -39,7 +39,7 @@ class UserEntity {
 //
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
-    apellido: { type: String, required: true, trim: true }, // <-- AÑADIDO
+    lastname: { type: String, required: true, trim: true }, // <-- AÑADIDO
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },

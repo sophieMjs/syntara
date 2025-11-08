@@ -9,7 +9,7 @@ class AuthService {
         this.userRepository = new UserRepository();
     }
 
-    async register({ name, apellido, email, password }) { // <-- CAMBIO AQUÍ
+    async register({ name, lastname, email, password }) { // <-- CAMBIO AQUÍ
         const existing = await this.userRepository.findByEmail(email);
         if (existing) {
             throw new Error("El correo ya está registrado.");
@@ -17,7 +17,7 @@ class AuthService {
 
         const user = await this.userRepository.createUser({
             name,
-            apellido, // <-- CAMBIO AQUÍ
+            lastname, // <-- CAMBIO AQUÍ
             email,
             password
         });
@@ -43,7 +43,7 @@ class AuthService {
             user: {
                 id: user._id,
                 name: user.name,
-                apellido: user.apellido, // <-- (Opcional) Devolverlo en el login
+                lastname: user.lastname, // <-- (Opcional) Devolverlo en el login
                 email: user.email,
                 role: user.role
             }

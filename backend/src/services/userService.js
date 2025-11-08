@@ -9,19 +9,19 @@ class UserService {
     /**
      * Registrar un nuevo usuario
      */
-    async register({ name, apellido, email, password }) { // <-- CAMBIO AQUÍ
+    async register({ name, lastname, email, password }) { // <-- CAMBIO AQUÍ
         const existing = await UserModel.findOne({ email });
         if (existing) {
             throw new Error("El correo ya está registrado");
         }
 
-        const user = new UserModel({ name, apellido, email, password }); // <-- CAMBIO AQUÍ
+        const user = new UserModel({ name, lastname, email, password }); // <-- CAMBIO AQUÍ
         await user.save();
 
         return {
             id: user._id,
             name: user.name,
-            apellido: user.apellido, // <-- CAMBIO AQUÍ
+            lastname: user.lastname, // <-- CAMBIO AQUÍ
             email: user.email,
         };
     }
@@ -47,7 +47,7 @@ class UserService {
             user: {
                 id: user._id,
                 name: user.name,
-                apellido: user.apellido, // <-- CAMBIO AQUÍ
+                lastname: user.lastname, // <-- CAMBIO AQUÍ
                 email: user.email,
                 role: user.role,
             },
