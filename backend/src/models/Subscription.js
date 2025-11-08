@@ -24,7 +24,7 @@ class SubscriptionEntity {
 }
 
 const subscriptionSchema = new mongoose.Schema({
-    type: { type: String, enum: ['Saver', 'Pro', 'Enterprise'], required: true },
+    type: { type: String, enum: ['Pro', 'Enterprise'], required: true },
     price: { type: Number, required: true },
     currency: { type: String, default: 'COP' },
     features: [{ type: String }],

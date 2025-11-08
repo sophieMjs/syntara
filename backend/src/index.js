@@ -5,7 +5,6 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const mongoose = require("mongoose");
-// const axios = require("axios"); // Ya no lo necesitamos
 const { spawn } = require('child_process');
 const { join } = require('path');
 
@@ -55,13 +54,24 @@ async function connectDB() {
 connectDB();
 
 // --- SERVIDOR EXPRESS ---
+// 6. ¡INICIALIZAR APP AQUÍ!
 const app = express();
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Rutas
+// 7. AHORA SÍ PODEMOS USAR 'app'
+
+// --- Middleware de Logger (Solución 1 recomendada) ---
+// Esto imprimirá CADA petición que llegue del frontend
+app.use((req, res, next) => {
+    console.log(`[CONEXIÓN FRONTEND] ${req.method} ${req.originalUrl}`);
+    next();
+});
+// ----------------------------------------------------
+
+// Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/search', searchRoutes);
@@ -73,7 +83,13 @@ app.get('/api', (req, res) => {
     res.send('¡El servidor API de Syntara está funcionando!');
 });
 
-// 4. --- RUTA PARA PROBAR LA CONEXIÓN A LA BD ---
+// Ruta de Ping para el frontend (Solución 2)
+app.get('/api/ping', (req, res) => {
+    console.log('✅ ¡El frontend ha hecho PING!');
+    res.status(200).send('pong');
+});
+
+// Ruta para probar la conexión a la BD
 app.get('/api/db-status', (req, res) => {
     const state = mongoose.connection.readyState;
     let statusMessage = 'Desconocido';
@@ -99,10 +115,10 @@ app.get('/api/db-status', (req, res) => {
     });
 });
 
+// 8. Iniciar el servidor
 const HOST = '0.0.0.0';
 app.listen(port, HOST, () => {
-    // 5. (Corregí las comillas que faltaban)
     console.log(`🚀 Servidor HTTP corriendo en http://localhost:${port} (accesible en red local)`);
-        console.log(`✅ Prueba la conexión de BD en: http://localhost:${port}/api/db-status`);
+    console.log(`✅ Prueba la conexión de BD en: http://localhost:${port}/api/db-status`);
+    console.log(`✅ Prueba el ping del frontend en: http://localhost:${port}/api/ping`);
 });
-// -------------------------------
