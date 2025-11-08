@@ -3,6 +3,7 @@
 
 # Archivos del IDE (WebStorm)
 .idea/
+.env
 
 # Archivos del sistema
 .DS_Store
