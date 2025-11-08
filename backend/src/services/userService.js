@@ -9,18 +9,19 @@ class UserService {
     /**
      * Registrar un nuevo usuario
      */
-    async register({ name, email, password }) {
+    async register({ name, apellido, email, password }) { // <-- CAMBIO AQUÍ
         const existing = await UserModel.findOne({ email });
         if (existing) {
             throw new Error("El correo ya está registrado");
         }
 
-        const user = new UserModel({ name, email, password });
+        const user = new UserModel({ name, apellido, email, password }); // <-- CAMBIO AQUÍ
         await user.save();
 
         return {
             id: user._id,
             name: user.name,
+            apellido: user.apellido, // <-- CAMBIO AQUÍ
             email: user.email,
         };
     }
@@ -46,6 +47,7 @@ class UserService {
             user: {
                 id: user._id,
                 name: user.name,
+                apellido: user.apellido, // <-- CAMBIO AQUÍ
                 email: user.email,
                 role: user.role,
             },
@@ -56,6 +58,7 @@ class UserService {
      * Obtener perfil
      */
     async getProfile(userId) {
+        // .populate("subscription") ya estaba, lo cual es correcto.
         const user = await UserModel.findById(userId).populate("subscription");
         if (!user) throw new Error("Usuario no encontrado");
 
