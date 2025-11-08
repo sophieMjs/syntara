@@ -1,7 +1,7 @@
 // services/subscriptionService.js
 
-const SubscriptionRepository = require("../repositories/subscriptionRepository");
-const SearchRepository = require("../repositories/searchRepository");
+const SubscriptionRepository = require("../repositories/subscriptionRepo");
+const SearchRepository = require("../repositories/searchRepo");
 
 class SubscriptionService {
     constructor() {

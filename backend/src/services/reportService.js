@@ -5,8 +5,8 @@ const PromptBuilderFactory = require("../factories/promptBuilderFactory");
 const OpenAIService = require("./openaiService");
 
 // Repositorios (usar los nombres que tienes)
-const ReportRepository = require("../repositories/reportRepository"); // clase -> instanciar
-const PriceRecordRepo = require("../repositories/priceRecordRepo"); // instancia exportada
+const ReportRepository = require("../repositories/reportRepo"); // clase -> instanciar
+const PriceRecordRepo = require("../repositories/priceRepo"); // instancia exportada
 const SearchRepo = require("../repositories/searchRepo"); // instancia exportada
 
 class ReportService {

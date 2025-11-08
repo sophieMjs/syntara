@@ -1,6 +1,11 @@
-const mongoose = require("mongoose");
+// backend/src/index.js
+
+// 1. Carga de .env debe ser la PRIMERA línea
 const dotenv = require("dotenv");
-const axios = require("axios");
+dotenv.config();
+
+const mongoose = require("mongoose");
+// const axios = require("axios"); // Ya no lo necesitamos
 const { spawn } = require('child_process');
 const { join } = require('path');
 
@@ -15,41 +20,46 @@ const userRoutes = require('./routes/userRoutes.js');
 // -----------------------------------------
 
 // --- Lógica de Rutas (Spawn) ---
-// No necesitamos fileURLToPath con CommonJS, __dirname ya existe
 const announcerPath = join(__dirname, 'network/announcer/discovery-announcer.js');
 
+// 'port' ahora leerá correctamente el .env
 const port = process.env.PORT || 3000;
 
 const announcer = spawn('node', [announcerPath, '--name', 'backend', '--port', port, '--secret', 'syntara'], { stdio: 'inherit' });
 
-dotenv.config();
 
-// --- Lógica de Base de Datos ---
+// --- Lógica de Base de Datos (Corregida) ---
 async function connectDB() {
     try {
-        const response = await axios.get("http://10.195.48.125.25:4000/ip");
-        const mongoIP = response.data.ip;
-        const encodedPass = encodeURIComponent(process.env.MONGO_PASS);
-
-        const uri = `mongodb://${process.env.MONGO_USER}:${encodedPass}@${mongoIP}:27017/${process.env.MONGO_DB}?authSource=admin`;
+        // 2. Usamos las variables del .env (MONGODB_HOST, MONGODB_PORT, etc.)
+        const uri = `mongodb://${process.env.MONGODB_HOST}:${process.env.MONGODB_PORT}/${process.env.MONGODB_DB_NAME}`;
 
         console.log("🌐 Conectando a:", uri);
 
-        await mongoose.connect(uri);
-        console.log("✅ Conectado exitosamente a MongoDB remoto");
+        // Opciones recomendadas para Mongoose
+        const options = {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        };
+
+        // 3. Conectamos Mongoose
+        await mongoose.connect(uri, options);
+        console.log("✅ Conectado exitosamente a MongoDB (con Mongoose)");
     } catch (err) {
-        console.error("Error de conexión a MongoDB:", err);
+        console.error("Error de conexión a MongoDB:", err.message);
+        process.exit(1); // Cerramos la app si no hay BD
     }
 }
 
+// Llamamos a la función para que se conecte al arrancar
 connectDB();
 
 // --- SERVIDOR EXPRESS ---
 const app = express();
 
 // Middlewares
-app.use(cors()); // Permite conexiones desde otros dominios (tu frontend)
-app.use(express.json()); // Permite al servidor entender JSON
+app.use(cors());
+app.use(express.json());
 
 // Rutas
 app.use('/api/auth', authRoutes);
@@ -63,10 +73,36 @@ app.get('/api', (req, res) => {
     res.send('¡El servidor API de Syntara está funcionando!');
 });
 
-// Ponemos el servidor a escuchar en TODAS las interfaces de red (0.0.0.0)
-// en el puerto 3000. Esto es CLAVE para la conexión en red local.
+// 4. --- RUTA PARA PROBAR LA CONEXIÓN A LA BD ---
+app.get('/api/db-status', (req, res) => {
+    const state = mongoose.connection.readyState;
+    let statusMessage = 'Desconocido';
+
+    // Estados de Mongoose: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
+    switch (state) {
+        case 0:
+            statusMessage = 'Desconectado';
+            break;
+        case 1:
+            statusMessage = '¡Conectado exitosamente!';
+            break;
+        case 2:
+            statusMessage = 'Conectando...';
+            break;
+        case 3:
+            statusMessage = 'Desconectando...';
+            break;
+    }
+    res.json({
+        connectionState: state,
+        statusMessage: statusMessage
+    });
+});
+
 const HOST = '0.0.0.0';
 app.listen(port, HOST, () => {
+    // 5. (Corregí las comillas que faltaban)
     console.log(`🚀 Servidor HTTP corriendo en http://localhost:${port} (accesible en red local)`);
+        console.log(`✅ Prueba la conexión de BD en: http://localhost:${port}/api/db-status`);
 });
 // -------------------------------
