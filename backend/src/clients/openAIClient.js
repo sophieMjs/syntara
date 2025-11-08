@@ -14,8 +14,8 @@ class OpenAIClient {
             apiKey: process.env.OPENAI_API_KEY
         });
 
-        this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-        this.temperature = 0.2;
+        this.model = process.env.OPENAI_MODEL || "gpt-5-mini";
+        this.temperature = 0.1;
         this.maxTokens = 2000;
 
         OpenAIClient.instance = this;

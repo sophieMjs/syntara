@@ -2,7 +2,7 @@
 // Servicio encargado de autenticación y gestión de credenciales
 
 const jwt = require("jsonwebtoken");
-const UserRepository = require("../repositories/userRepository");
+const UserRepository = require("../repositories/userRepo");
 
 class AuthService {
     constructor() {
