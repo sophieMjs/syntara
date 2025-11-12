@@ -2,51 +2,36 @@
 // Servicio encargado de autenticación y gestión de credenciales
 
 const jwt = require("jsonwebtoken");
-// 1. Importamos el REPOSITORIO (objeto) y el MODELO (clase Mongoose)
-const userRepository = require("../repositories/userRepo");
-const User = require('../models/User'); // <-- CAMBIO: Añadido
+const UserRepository = require("../repositories/userRepo");
 
 class AuthService {
     constructor() {
-        // 2. Asignamos el objeto repositorio, no creamos una instancia
-        this.userRepository = userRepository; // <-- CAMBIO: Quitado 'new'
+        this.userRepository = new UserRepository();
     }
 
-    async register({ name, lastname, email, password }) {
-        const existing = await this.userRepository.findUserByEmail(email); // <-- CAMBIO: 'findByEmail' en lugar de 'find'
+    async register({ name, lastname, email, password }) { // <-- CAMBIO AQUÍ
+        const existing = await this.userRepository.findByEmail(email);
         if (existing) {
             throw new Error("El correo ya está registrado.");
         }
 
-        // 3. Creamos la INSTANCIA de Mongoose aquí
-        const newUserInstance = new User({
+        const user = await this.userRepository.createUser({
             name,
-            lastname,
+            lastname, // <-- CAMBIO AQUÍ
             email,
             password
-            // El hook 'pre-save' de tu modelo 'User.js' se encargará de hashear la contraseña
         });
-
-        // 4. Pasamos la INSTANCIA al repositorio (que llamará a .save())
-        const user = await this.userRepository.createUser(newUserInstance);
 
         return {
             message: "Usuario registrado exitosamente",
-            user: { // Devolvemos un objeto limpio
-                id: user._id,
-                name: user.name,
-                lastname: user.lastname,
-                email: user.email,
-                role: user.role
-            }
+            user
         };
     }
 
     async login(email, password) {
-        const user = await this.userRepository.findUserByEmail(email); // <-- CAMBIO: 'findByEmail'
+        const user = await this.userRepository.findByEmail(email);
         if (!user) throw new Error("Credenciales inválidas.");
 
-        // Asumimos que tu modelo User.js tiene el método comparePassword
         const isMatch = await user.comparePassword(password);
         if (!isMatch) throw new Error("Credenciales inválidas.");
 
@@ -58,7 +43,7 @@ class AuthService {
             user: {
                 id: user._id,
                 name: user.name,
-                lastname: user.lastname,
+                lastname: user.lastname, // <-- (Opcional) Devolverlo en el login
                 email: user.email,
                 role: user.role
             }
@@ -77,7 +62,6 @@ class AuthService {
     }
 
     async getProfile(userId) {
-        // Asumimos que tu repositorio tiene 'findById'
         return this.userRepository.findById(userId);
     }
 }

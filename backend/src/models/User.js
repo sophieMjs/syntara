@@ -1,59 +1,65 @@
-// backend/src/models/User.js
+// User.js
+// Clase de dominio + esquema / modelo Mongoose para usuarios
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// 1. Definimos el Esquema (Schema) con Mongoose
-const userSchema = new mongoose.Schema(
-    {
-        name: {
-            type: String,
-            required: true,
-        },
-        lastname: {
-            type: String,
-            required: true,
-        },
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-            // Validación simple de email (Mongoose no tiene un 'isEmail' tan directo como Sequelize)
-            match: [/.+\@.+\..+/, 'Por favor ingrese un email válido'],
-        },
-        password: {
-            type: String,
-            required: true,
-        },
-        role: {
-            type: String,
-            default: 'sin suscripcion', // Valor por defecto
-        },
-    },
-    {
-        // Esto añade createdAt y updatedAt automáticamente
-        timestamps: true,
-    }
-);
-
-// 2. Usamos un 'hook' de Mongoose (pre-save) para encriptar la contraseña
-// Esto se ejecuta ANTES de que un documento 'User' se guarde
-userSchema.pre('save', async function (next) {
-    // Solo encripta la contraseña si ha sido modificada (o es nueva)
-    if (!this.isModified('password')) {
-        return next();
+//
+// Clase de dominio (lógica de negocio simple)
+//
+class UserEntity {
+    constructor({ name, lastname, email, password, role = 'user', createdAt = new Date() } = {}) {
+        this.name = name;
+        this.lastname = lastname; // <-- AÑADIDO
+        this.email = email;
+        this.password = password;
+        this.role = role;
+        this.createdAt = createdAt;
     }
 
-    try {
+    // Lógica de negocio: saludo
+    greet() {
+        return `Hola ${this.name}, bienvenido a Syntara`;
+    }
+
+    // Helper: hashear contraseña (usar antes de persistir si no se usa hook)
+    async hashPassword() {
         const salt = await bcrypt.genSalt(10);
         this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (err) {
-        next(err);
     }
+
+    // Comparar contraseña
+    async comparePassword(plain) {
+        return bcrypt.compare(plain, this.password);
+    }
+}
+
+//
+// Mongoose Schema & Model
+//
+const userSchema = new mongoose.Schema({
+    name: { type: String, required: true, trim: true },
+    lastname: { type: String, required: true, trim: true }, // <-- AÑADIDO
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    password: { type: String, required: true },
+    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    subscription: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
+    createdAt: { type: Date, default: Date.now }
 });
 
-// 3. Creamos y exportamos el Modelo
-// Mongoose usará el string 'User' para crear una colección llamada 'users' en MongoDB
-const User = mongoose.model('User', userSchema);
+// Pre-save: asegurar password hasheada
+userSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) return next();
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+});
 
-module.exports = User;
+// Instance method (si quieres usar desde doc)
+userSchema.methods.comparePassword = async function (plain) {
+    return bcrypt.compare(plain, this.password);
+};
+
+const UserModel = mongoose.model('User', userSchema);
+
+module.exports = { UserEntity, UserModel };
