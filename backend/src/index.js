@@ -66,14 +66,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 7. AHORA SÍ PODEMOS USAR 'app'
 
-// --- Middleware de Logger (Solución 1 recomendada) ---
-// Esto imprimirá CADA petición que llegue del frontend
 app.use((req, res, next) => {
     console.log(`[CONEXIÓN FRONTEND] ${req.method} ${req.originalUrl}`);
 
-    // 💡 AÑADE ESTA LÍNEA PARA VER EL BODY:
     console.log('[REQ.BODY]:', req.body);
 
     next();
