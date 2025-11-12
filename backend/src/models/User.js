@@ -1,58 +1,59 @@
-const { Model, DataTypes } = require('sequelize');
+// backend/src/models/User.js
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const sequelize = require('../db-conection'); // Asegúrate que la ruta a tu conexión sequelize sea correcta
 
-class User extends Model {
-    // ... (tus otros métodos de instancia si tienes)
-}
-
-User.init(
+// 1. Definimos el Esquema (Schema) con Mongoose
+const userSchema = new mongoose.Schema(
     {
-        // Definición de las columnas
         name: {
-            type: DataTypes.STRING,
-            allowNull: false,
+            type: String,
+            required: true,
         },
-        lastname: { // <-- Corregido para que coincida con lo que espera el frontend
-            type: DataTypes.STRING,
-            allowNull: false,
+        lastname: {
+            type: String,
+            required: true,
         },
         email: {
-            type: DataTypes.STRING,
-            allowNull: false,
+            type: String,
+            required: true,
             unique: true,
-            validate: {
-                isEmail: true,
-            },
+            // Validación simple de email (Mongoose no tiene un 'isEmail' tan directo como Sequelize)
+            match: [/.+\@.+\..+/, 'Por favor ingrese un email válido'],
         },
         password: {
-            type: DataTypes.STRING,
-            allowNull: false,
+            type: String,
+            required: true,
         },
         role: {
-            type: DataTypes.STRING,
-            defaultValue: 'sin suscripcion', // Valor por defecto
-        },
-        createdAt: { // Sequelize maneja esto, pero si lo tienes explícito...
-            type: DataTypes.DATE,
-            defaultValue: DataTypes.NOW,
+            type: String,
+            default: 'sin suscripcion', // Valor por defecto
         },
     },
     {
-        sequelize,
-        modelName: 'User',
-        hooks: {
-            // ESTE ES EL HOOK CORRECTO Y ÚNICO
-            beforeCreate: async (user) => {
-                if (user.password) {
-                    const salt = await bcrypt.genSalt(10);
-                    user.password = await bcrypt.hash(user.password, salt);
-                }
-            },
-        },
+        // Esto añade createdAt y updatedAt automáticamente
+        timestamps: true,
     }
 );
 
-// ¡ELIMINADO! Ya no hay un User.beforeCreate duplicado aquí.
+// 2. Usamos un 'hook' de Mongoose (pre-save) para encriptar la contraseña
+// Esto se ejecuta ANTES de que un documento 'User' se guarde
+userSchema.pre('save', async function (next) {
+    // Solo encripta la contraseña si ha sido modificada (o es nueva)
+    if (!this.isModified('password')) {
+        return next();
+    }
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
+// 3. Creamos y exportamos el Modelo
+// Mongoose usará el string 'User' para crear una colección llamada 'users' en MongoDB
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;

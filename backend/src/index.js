@@ -10,6 +10,7 @@ const { join } = require('path');
 
 // --- IMPORTACIONES DEL SERVIDOR (con require) ---
 const express = require('express');
+const User = require('./User');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
@@ -114,6 +115,14 @@ app.get('/api/db-status', (req, res) => {
         statusMessage: statusMessage
     });
 });
+
+module.exports = {
+    User,
+    // Subscription,
+    // PriceRecord,
+    // Search,
+    // Report
+};
 
 // 8. Iniciar el servidor
 const HOST = '0.0.0.0';
