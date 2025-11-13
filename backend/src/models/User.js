@@ -22,11 +22,6 @@ class UserEntity {
         return `Hola ${this.name}, bienvenido a Syntara`;
     }
 
-    // Helper: hashear contraseña (usar antes de persistir si no se usa hook)
-    async hashPassword() {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-    }
 
     // Comparar contraseña
     async comparePassword(plain) {

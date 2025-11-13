@@ -3,24 +3,38 @@
 
 const jwt = require("jsonwebtoken");
 const UserRepository = require("../repositories/userRepo");
+// services/authService.js
+
+// ... (imports)
 
 class AuthService {
     constructor() {
         this.userRepository = new UserRepository();
     }
 
-    async register({ name, lastname, email, password }) { // <-- CAMBIO AQUÍ
+    async register({ name, lastname, email, password }) {
+
+        console.log("[DEBUG] Iniciando authService.register..."); // <-- AÑADE ESTO
+
         const existing = await this.userRepository.findByEmail(email);
+
+        console.log("[DEBUG] findByEmail completado."); // <-- AÑADE ESTO
+
         if (existing) {
+            console.log("[DEBUG] El usuario ya existe."); // <-- AÑADE ESTO
             throw new Error("El correo ya está registrado.");
         }
 
+        console.log("[DEBUG] Creando usuario en el repo..."); // <-- AÑADE ESTO
+
         const user = await this.userRepository.createUser({
             name,
-            lastname, // <-- CAMBIO AQUÍ
+            lastname,
             email,
             password
         });
+
+        console.log("[DEBUG] Usuario creado exitosamente en el repo."); // <-- AÑADE ESTO
 
         return {
             message: "Usuario registrado exitosamente",
@@ -28,27 +42,55 @@ class AuthService {
         };
     }
 
+    // ... (resto del archivo)
+
+    // services/authService.js
+
+// ... (imports y clase) ...
+
     async login(email, password) {
-        const user = await this.userRepository.findByEmail(email);
-        if (!user) throw new Error("Credenciales inválidas.");
+        try { // <--- AÑADE UN TRY/CATCH AQUÍ DENTRO
+            console.log(`[DEBUG LOGIN] Buscando usuario: ${email}`);
+            console.log(`[DEBUG LOGIN] Contraseña recibida (plain): ${password}`);
 
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) throw new Error("Credenciales inválidas.");
+            const user = await this.userRepository.findByEmail(email);
 
-        const token = this.generateToken(user);
-
-        return {
-            message: "Login exitoso",
-            token,
-            user: {
-                id: user._id,
-                name: user.name,
-                lastname: user.lastname, // <-- (Opcional) Devolverlo en el login
-                email: user.email,
-                role: user.role
+            if (!user) {
+                console.log("[DEBUG LOGIN] ERROR: Usuario no encontrado.");
+                throw new Error("Credenciales inválidas.");
             }
-        };
+
+            console.log(`[DEBUG LOGIN] Usuario encontrado. Hash en BD: ${user.password}`);
+
+            const isMatch = await user.comparePassword(password);
+
+            if (!isMatch) {
+                console.log("[DEBUG LOGIN] ERROR: La comparación de bcrypt falló (isMatch: false).");
+                throw new Error("Credenciales inválidas.");
+            }
+
+            console.log("[DEBUG LOGIN] ¡Login exitoso! Generando token.");
+            const token = this.generateToken(user);
+
+            return {
+                message: "Login exitoso",
+                token,
+                user: {
+                    id: user._id,
+                    name: user.name,
+                    lastname: user.lastname,
+                    email: user.email,
+                    role: user.role
+                }
+            };
+        } catch (err) {
+            // Re-lanzamos el error para que el controlador lo atrape
+            throw err;
+        }
     }
+
+// ... (resto del archivo) ...
+
 
     generateToken(user) {
         const payload = {
@@ -66,4 +108,4 @@ class AuthService {
     }
 }
 
-module.exports = AuthService;
+module.exports = new AuthService();
