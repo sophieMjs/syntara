@@ -96,6 +96,7 @@ REGLAS (versión optimizada y flexible):
       currency: "COP",
       date: "YYYY-MM-DD",
       url: "string",
+      isOffer: boolean,
       raw: {
         httpStatus: number,
         presentationFound: boolean,
@@ -114,7 +115,7 @@ REGLAS (versión optimizada y flexible):
 }
 
 REGLAS DE FALLBACK:
-- Si existe al menos 1 resultado verificable, devolver HJSON con esos resultados.
+- Si existe al menos 1 resultado verificable, devolver JSON con esos resultados.
 - Si no hay locationValidated=true pero sí verificables, devolver best-effort.
 - Si no hay ningún resultado verificable → devolver { results: [] }.
 

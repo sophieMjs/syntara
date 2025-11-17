@@ -13,6 +13,7 @@ class PriceRecordEntity {
                     currency = 'COP',
                     date = new Date(),
                     url = null,
+                    isOffer = false,
                     raw = {},
                     metadata = {}
                 } = {}) {
@@ -24,6 +25,7 @@ class PriceRecordEntity {
         this.currency = currency;
         this.date = date;
         this.url = url;
+        this.isOffer = isOffer;
         this.raw = raw;
         this.metadata = metadata;
     }
@@ -45,6 +47,7 @@ const priceRecordSchema = new mongoose.Schema({
     currency: { type: String, default: 'COP' },
     date: { type: Date, default: Date.now },
     url: { type: String, default: null },
+    isOffer: { type: Boolean, default: false },
     raw: { type: mongoose.Schema.Types.Mixed, default: {} },
     metadata: {
         queryId: { type: String, default: null },

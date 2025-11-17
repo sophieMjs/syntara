@@ -209,6 +209,7 @@ REGLAS (versión optimizada y flexible):
       currency: "COP",
       date: "YYYY-MM-DD",
       url: "string",
+      isOffer": boolean,
       raw: {
         httpStatus: number,
         presentationFound: boolean,

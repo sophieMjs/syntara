@@ -24,7 +24,7 @@ class SearchService {
         // 1️⃣ Construir el prompt
         const builder = this.promptFactory.getPromptBuilder("search");
         // El builder ya no recibe 'stores'
-        const prompt = builder.buildPrompt({ product, quantity, unit });
+        const prompt = builder.buildPrompt({product, quantity, unit});
 
         console.log("➡️ [SearchService] 5. Prompt construido. Llamando a la IA..."); // LOG ANTES DE LA LLAMADA EXTERNA
 
@@ -47,16 +47,18 @@ class SearchService {
         }
 
         // 4️⃣ Registrar búsqueda
-        // Eliminamos 'stores' del log de búsqueda
         const searchLog = await this.searchRepo.create({
             userId,
-            product,
-            quantity,
-            unit,
+            query: {        // <--- AÑADIR ESTO
+                product,
+                quantity,
+                unit
+            },              // <--- AÑADIR ESTO
             results: savedRecords.map(r => r._id)
         });
 
-        console.log("✅ [SearchService] 7. Logs de búsqueda guardados. Retornando..."); // LOG SERVICE END
+        console.log("✅ [SearchService] 7. Logs de búsqueda guardados. Retornando...");
+
 
         return {
             searchId: searchLog._id,
