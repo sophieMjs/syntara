@@ -28,6 +28,7 @@ class OpenAIClient {
 
 // ... (El constructor se mantiene igual)
 
+
     async sendPrompt(prompt) {
         const payload = {
             model: this.model,
