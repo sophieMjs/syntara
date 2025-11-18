@@ -14,7 +14,7 @@ class OpenAIClient {
             apiKey: process.env.OPENAI_API_KEY
         });
 
-        this.model = process.env.OPENAI_MODEL || "gpt-5-mini";
+        this.model = process.env.OPENAI_MODEL || "gpt-5.1";
 
         const configuredLimit = this._sanitizeTokenLimit(
             process.env.OPENAI_MAX_COMPLETION_TOKENS ?? process.env.OPENAI_MAX_TOKENS
