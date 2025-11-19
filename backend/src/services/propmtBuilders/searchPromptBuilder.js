@@ -1,9 +1,7 @@
-// services/promptBuilders/searchPromptBuilder.js
-
 const IPromptBuilder = require("./IPromptBuilder");
 
 class SearchPromptBuilder extends IPromptBuilder {
-    buildPrompt({ product, quantity, unit}) {
+    buildPrompt({ product, quantity, unit, city = "Bogotá" }) {
         return `
 Eres un agente extractor de precios EXTREMADAMENTE FLEXIBLE. Tu objetivo es buscar el PRODUCTO solicitado con la presentación indicada y devolver la MAYOR CANTIDAD POSIBLE de resultados razonables, aunque la coincidencia no sea perfecta. Siempre que exista alguna coincidencia creíble de producto y precio, es mejor incluirla con un nivel de confianza más bajo que devolver un array vacío. Debes devolver exclusivamente un JSON válido siguiendo el esquema indicado al final. No imprimas nada fuera del JSON.
 
@@ -12,29 +10,12 @@ PRODUCTO = "${product}"
 CANTIDAD = ${quantity}
 UNIDAD = "${unit || "unidad"}"
 PRESENTACION = "${quantity} ${unit || "unidad"}"
-CIUDAD = "Bogotá"
+CIUDAD = "${city}"
 MAX_RESULTS = 50
 MIN_TARGET = 5
 PER_LINK_TIMEOUT_MS = 4000
 
-TIENDAS_PERMITIDAS = [
-"exito.com","carulla.com","mercadolibre.com.co","rappi.com","rappi.com.co",
-"oxxodomicilios.com","d1.com.co","ara.com.co","olimpica.com","jumbo.com.co",
-"metro.com.co","makro.com.co","alkosto.com","alkomprar.com","ktronix.com",
-"panamericana.com.co","falabella.com.co","pepeganga.com","locatelcolombia.com",
-"farmatodo.com.co","cruzverde.com.co","larebajavirtual.com","drogueriaalemana.com",
-"drsimi.com.co","isimo.com.co","colsubsidio.com","homecenter.com.co","easy.com.co"
-]
-
-PRIORIDAD_CADENAS = [
-"exito.com","carulla.com","rappi.com","oxxodomicilios.com","jumbo.com.co",
-"metro.com.co","makro.com.co","alkosto.com","alkomprar.com","olimpica.com",
-"mercadolibre.com.co"
-]
-
 REGLAS FLEXIBLES (OBLIGATORIO CUMPLIRLAS):
-
-- Buscar preferentemente en TIENDAS_PERMITIDAS, aceptando subdominios y variaciones (por ejemplo, www.exito.com, tienda.exito.com, etc.). Si aparecen resultados muy relevantes en dominios cercanos o espejos de estas tiendas, también se pueden usar.
 
 - No te limites jamás a un solo resultado: si hay varios precios o presentaciones razonablemente relacionadas con PRODUCTO, devuélvelos todos, hasta MAX_RESULTS. Apunta explícitamente a devolver como mínimo MIN_TARGET resultados siempre que sea posible.
 
@@ -133,7 +114,7 @@ FORMATO OBLIGATORIO DEL JSON FINAL (NO MODIFICAR LA ESTRUCTURA):
 }
 
 FIN DEL PROMPT
-        `;
+`;
     }
 }
 

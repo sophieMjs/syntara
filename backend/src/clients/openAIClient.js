@@ -1,4 +1,3 @@
-// clients/openAIClient.js
 const OpenAI = require("openai");
 require("dotenv").config();
 
@@ -16,24 +15,22 @@ class OpenAIClient {
 
         this.model = process.env.OPENAI_MODEL || "gpt-5.1";
 
-        const configuredLimit = this._sanitizeTokenLimit(
-            process.env.OPENAI_MAX_COMPLETION_TOKENS ?? process.env.OPENAI_MAX_TOKENS
-        );
+        const configuredLimit = this._sanitizeTokenLimit(process.env.OPENAI_MAX_COMPLETION_TOKENS ?? process.env.OPENAI_MAX_TOKENS);
         this.maxTokens = configuredLimit;
 
         OpenAIClient.instance = this;
     }
 
-// backend/src/clients/openAIClient.js
-
-// ... (El constructor se mantiene igual)
-
-
-    async sendPrompt(prompt) {
+    async sendPrompt(prompt, tools = []) {
         const payload = {
             model: this.model,
-            messages: [{ role: "user", content: prompt }],
-            response_format: { type: "json_object" }
+            messages: [{role: "user", content: prompt}],
+            response_format: {type: "json_object"},
+            tools: tools.length > 0 ? tools : [{
+                type: "web_search", filters: {
+                    allowed_domains: ["exito.com", "carulla.com", "mercadolibre.com.co", "rappi.com.co", "colombia.oxxodomicilios.com", "d1.com.co", "aratiendas.com", "olimpica.com", "jumbocolombia.com", "tiendasmetro.co", "tienda.makro.com.co", "alkosto.com", "alkomprar.com", "ktronix.com", "tienda.claro.com.co", "tienda.movistar.com.co", "wom.co/equiposcategory8", "virginmobile.co/marketplace", "panamericana.com.co", "falabella.com.co", "pepeganga.com", "locatelcolombia.com", "bellapiel.com.co", "farmatodo.com.co", "cruzverde.com.co", "larebajavirtual.com", "drogueriasalemana.com", "drogueriasdeldrsimi.co", "tiendasisimo.com", "drogueriascolsubsidio.com", "homecenter.com.co", "easy.com.co", "ikea.com/co/es", "homesentry.co", "decathlon.com.co", "dafiti.com.co", "cromantic.com"]
+                }
+            }] // Activa la herramienta de web search si no se pasa otra herramienta
         };
 
         const tokenLimit = this._sanitizeTokenLimit(this.maxTokens);
@@ -53,7 +50,7 @@ class OpenAIClient {
             if (!message) {
                 const finishReason = choice?.finish_reason || 'unknown';
                 console.error(`❌ [OpenAIClient] Respuesta incompleta o filtrada. Razón: ${finishReason}`);
-                throw new Error(`OpenAI no devolvió un mensaje válido. Razón de finalización: ${finishReason}.`);
+                throw new Error("OpenAI no devolvió un mensaje válido. Razón de finalización: " + finishReason);
             }
 
             const rawContent = this._extractContent(choice);
@@ -69,8 +66,6 @@ class OpenAIClient {
             throw error;
         }
     }
-
-// ... (El resto de métodos, incluyendo _sanitizeTokenLimit y _extractContent)
 
     _extractContent(choice) {
         const message = choice?.message;
