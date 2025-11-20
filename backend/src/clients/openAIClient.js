@@ -1,11 +1,26 @@
-const OpenAI = require("openai");
+// clients/openAIClient.js
+
+//***********************************************
+
+//***********************************************
+
+//***********************************************
+
+//***********************************************
+
+//***********************************************
+
+//***********************************************
+
+//***********************************************
+
+//***********************************************
+/*
+const OpenAI = require("openai").default;  // usar .default con CommonJS
 require("dotenv").config();
-const SearchPromptBuilder = require("../services/propmtBuilders/searchPromptBuilder");
 
 class OpenAIClient {
     constructor() {
-        if (OpenAIClient.instance) return OpenAIClient.instance;
-
         if (!process.env.OPENAI_API_KEY) {
             throw new Error("Falta la variable de entorno OPENAI_API_KEY");
         }
@@ -15,157 +30,184 @@ class OpenAIClient {
         });
 
         this.model = process.env.OPENAI_MODEL || "gpt-5.1";
-
-        const configuredLimit = this._sanitizeTokenLimit(process.env.OPENAI_MAX_COMPLETION_TOKENS ?? process.env.OPENAI_MAX_TOKENS);
-        this.maxTokens = configuredLimit;
-
-        OpenAIClient.instance = this;
     }
 
-        async sendPrompt(promptInput) {
-            // Construir el prompt solo si recibimos los datos sin procesar.
-            // Si ya es un string, lo usamos directamente.
-            let prompt;
-            if (typeof promptInput === "string") {
-                prompt = promptInput;
-            } else {
-                const { product, quantity, unit, city = "Bogotá" } = promptInput || {};
-                const promptBuilder = new SearchPromptBuilder();
-                prompt = promptBuilder.buildPrompt({ product, quantity, unit, city });
-            }
+    async sendPrompt(userPrompt) {
+        let messages = [
+            {
+                role: "system",
+                content:
+                    "Eres un agente extractor de precios. Usa web_search siempre que sea necesario. Devuelve siempre un JSON con campo results."
+            },
+            { role: "user", content: userPrompt }
+        ];
 
-            // El arreglo de páginas permitidas para la búsqueda web
-            const allowedDomains = [
-                "exito.com", "carulla.com", "mercadolibre.com.co", "rappi.com.co",
-                "colombia.oxxodomicilios.com", "d1.com.co", "aratiendas.com", "olimpica.com",
-                "jumbocolombia.com", "tiendasmetro.co", "tienda.makro.com.co", "alkosto.com",
-                "alkomprar.com", "ktronix.com", "tienda.claro.com.co", "tienda.movistar.com.co",
-                "wom.co/equiposcategory8", "virginmobile.co/marketplace", "panamericana.com.co",
-                "falabella.com.co", "pepeganga.com", "locatelcolombia.com", "bellapiel.com.co",
-                "farmatodo.com.co", "cruzverde.com.co", "larebajavirtual.com", "drogueriasalemana.com",
-                "drogueriasdeldrsimi.co", "tiendasisimo.com", "drogueriascolsubsidio.com",
-                "homecenter.com.co", "easy.com.co", "ikea.com/co/es", "homesentry.co",
-                "decathlon.com.co", "dafiti.com.co", "cromantic.com"
-            ];
-
-            const systemInstruction = `Debes usar la herramienta web_search siempre que necesites buscar precios en línea.
-Incluye siempre el parámetro allowed_domains con este listado restringido: ${allowedDomains.join(", ")}.`;
-
-            // Define la herramienta de búsqueda web como 'function' y pasa el arreglo de dominios
-            const payload = {
+        while (true) {
+            const response = await this.client.chat.completions.create({
                 model: this.model,
-                messages: [
-                    { role: "system", content: systemInstruction },
-                    { role: "user", content: prompt }
-                ],
-                response_format: {type: "json_object"},
+                messages,
                 tools: [
                     {
-                        type: "function",  // Definimos que la herramienta es de tipo 'function'
+                        type: "function",
                         function: {
-                            name: "web_search",  // Nombre de la función personalizada
-                            description: "Realiza una búsqueda web en sitios de comercio electrónico colombianos",  // Descripción
-            parameters: {
-                type: "object",
-                    properties: {
-                    query: {
-                        type: "string",
-                            description: "Término de búsqueda para el producto"
-                    },
-                    allowed_domains: {
-                        type: "array",
-                            items: { type: "string" },
-                        description: "Lista de dominios permitidos para realizar la búsqueda",
-                    default: allowedDomains
+                            name: "web_search",
+                            description: "Realiza una búsqueda web en tiendas de Colombia",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    query: { type: "string", description: "Término de búsqueda" }
+                                },
+                                required: ["query"]
+                            }
+                        }
                     }
-                },
-                required: ["query", "allowed_domains"]  // 'query' es obligatorio para la búsqueda
+                ],
+                tool_choice: "auto",
+                response_format: { type: "json_object" }
+            });
+
+            const msg = response.choices[0].message;
+
+            // Si GPT invocó herramienta
+            if (msg.tool_calls?.length > 0) {
+                const toolCall = msg.tool_calls[0];
+                console.log("🔧 TOOL CALL:", toolCall);
+
+                const toolResponse = await this.client.chat.completions.create({
+                    model: this.model,
+                    messages: [
+                        ...messages,
+                        msg,
+                        {
+                            role: "tool",
+                            tool_call_id: toolCall.id,
+                            content: "" // el SDK se encarga de ejecutar
+                        }
+                    ],
+                    response_format: { type: "json_object" }
+                });
+
+                const followUp = toolResponse.choices[0].message;
+
+                if (followUp.content && followUp.content.trim() !== "") {
+                    return followUp.content;
+                }
+
+                messages.push(msg);
+                continue;
             }
+
+            // Si respuesta final normal
+            if (msg.content) {
+                return msg.content;
+            }
+
+            throw new Error("Respuesta inválida de OpenAI");
         }
     }
-],
-    tool_choice: "auto",
-    parallel_tool_calls: "false"
-};
-
-const tokenLimit = this._sanitizeTokenLimit(this.maxTokens);
-
-if (tokenLimit) {
-    payload.max_completion_tokens = tokenLimit;  // ¡Cambiado de 'max_tokens' a 'max_completion_tokens'!
 }
 
-try {
-    // Ejecutar la solicitud a la API de OpenAI
-    const response = await this.client.chat.completions.create(payload);
+module.exports = OpenAIClient;
 
-    const choice = response?.choices?.[0];
-    const message = choice?.message;
+*/
+// clients/openAIClient.js
+const OpenAI = require("openai").default;
+require("dotenv").config();
 
-    if (!message) {
-        const finishReason = choice?.finish_reason || 'unknown';
-        console.error(`❌ [OpenAIClient]Respuesta incompleta o filtrada.Razón:${finishReason}`);
-        throw new Error("OpenAI no devolvió un mensaje válido. Razón de finalización: " + finishReason);
+class OpenAIClient {
+    constructor() {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error("Falta la variable de entorno OPENAI_API_KEY");
+        }
+
+        this.client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+        // Por compatibilidad con el ejemplo oficial, por defecto usamos "gpt-5".
+        // Si tu cuenta tiene gpt-5.1 y quieres usarla, ponla en OPENAI_MODEL.
+        this.model = process.env.OPENAI_MODEL || "gpt-5";
     }
 
-    const rawContent = this._extractContent(choice);
-    if (rawContent) {
-        return rawContent;
-    }
-    if (rawContent) {
-        return rawContent;
-    }
+    /**
+     * sendPrompt:
+     * - prompt: string (tu prompt completo; por ejemplo el builder que ya tienes)
+     * - opts: { includeSources: boolean } (opcional)
+     *
+     * Devuelve un objeto { text: string, webSearchResults: Array, raw: response }
+     */
+    async sendPrompt(prompt, opts = { includeSources: true }) {
+        try {
+            const include = [];
+            if (opts.includeSources) {
+                // Valores compatibles con la Responses API para ver resultados de web_search
+                include.push("web_search_call.results", "web_search_call.action.sources");
+            }
 
-    console.error("❌ [OpenAIClient] Contenido extraíble nulo/vacío. Mensaje crudo:", JSON.stringify(message).substring(0, 500) + '...');
-    throw new Error("OpenAI no devolvió contenido interpretable en la respuesta (Contenido vacío o inesperado).");
+            const response = await this.client.responses.create({
+                model: this.model,
+                input: prompt,
+                tools: [{ type: "web_search" }],
+                // Pedimos explícitamente las partes que queremos inspeccionar si es posible
+                ...(include.length ? { include } : {}),
+                // No forzamos formato; tu prompt está pidiendo JSON estricto y el modelo debe devolverlo.
+            });
 
-} catch (error) {
-    console.error(`🔥 [OpenAIClient] Error de la API o red: ${error.message}`);
-    throw error;
-}
+            // 1) Texto principal (si lo hay)
+            let finalText = "";
+            for (const block of response.output ?? []) {
+                if (block.type === "output_text") {
+                    finalText += block.text ?? "";
+                }
+            }
+
+            // 2) Extraer resultados de web_search (si existen)
+            const webSearchResults = [];
+            // 2a) Si la API llenó web_search_call.results (forma esperada)
+            if (Array.isArray(response.web_search_call?.results)) {
+                for (const r of response.web_search_call.results) {
+                    webSearchResults.push(r);
+                }
+            }
+
+            // 2b) Si la API llenó action.sources (otra forma que aparece en docs/examples)
+            if (Array.isArray(response.web_search_call?.action?.sources)) {
+                for (const s of response.web_search_call.action.sources) {
+                    webSearchResults.push(s);
+                }
+            }
+
+            // 3) Para compatibilidad, también revisamos propiedades anidadas por si vienen con otro nombre
+            // (defensivo: no romper si la shape cambia ligeramente)
+            if (response?.meta) {
+                // ejemplo: algunas respuestas incluyen referencias en response.output_annotations
+                // no obligatorio, solo logging
+            }
+
+            // LOG útil para debugging local
+            if (webSearchResults.length > 0) {
+                console.log("🔎 web_search results (count):", webSearchResults.length);
+                // Mostrar solo url y status/summary para no spamear consola
+                webSearchResults.forEach((w, i) => {
+                    const url = w.url || w.link || w.uri || null;
+                    const status = w.response_status || w.http_status || null;
+                    const title = w.title || w.name || null;
+                    console.log(`  [${i}] ${title || "(sin título)"} - ${url} - status:${status}`);
+                });
+            } else {
+                console.log("🔎 No se detectaron web_search results en la respuesta.");
+            }
+
+            return {
+                text: finalText.trim(),
+                webSearchResults,
+                raw: response
+            };
+
+        } catch (err) {
+            // Manejo de errores claro y con suficiente contexto
+            console.error("[OpenAIClient] Error al comunicarse con OpenAI:", err?.message || err);
+            // Re-lanzar para que el servicio superior lo capture y haga retries o fallback
+            throw new Error("No se pudo obtener respuesta de OpenAI: " + (err?.message || String(err)));
         }
-
-    _extractContent(choice) {
-        const message = choice?.message;
-        if (!message) return null;
-
-        if (typeof message.content === "string") {
-            const text = message.content.trim();
-            if (text) return text;
-        }
-
-        if (Array.isArray(message.content)) {
-            const text = message.content
-                .map(part => {
-                    if (typeof part === "string") return part;
-                    if (typeof part?.text === "string") return part.text;
-                    if (typeof part?.content === "string") return part.content;
-                    if (part?.type === "output_text" && typeof part?.text === "string") return part.text;
-                    return "";
-                })
-                .join("")
-                .trim();
-            if (text) return text;
-        }
-
-        const toolArgs = message?.tool_calls?.[0]?.function?.arguments;
-        if (typeof toolArgs === "string" && toolArgs.trim()) {
-            return toolArgs.trim();
-        }
-
-        if (typeof choice?.text === "string" && choice.text.trim()) {
-            return choice.text.trim();
-        }
-
-        return null;
-    }
-
-    _sanitizeTokenLimit(value) {
-        const parsed = Number(value);
-
-        if (!Number.isFinite(parsed) || parsed <= 0) {
-            return null;
-        }
-        return Math.floor(parsed);
     }
 }
 

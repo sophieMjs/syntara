@@ -23,9 +23,9 @@ class OpenAIService {
         // Se eliminó la propiedad this.maxTokens que no se inicializaba ni se usaba correctamente.
     }
 
-    /**
-     * Hace una petición a la API de OpenAI con reintentos inteligentes
-     */
+
+     // Hace una petición a la API de OpenAI con reintentos inteligentes
+
     async sendPrompt(prompt, options = {}) {
         if (!prompt || typeof prompt !== "string") {
             throw new Error("El prompt debe ser una cadena válida.");

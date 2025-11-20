@@ -24,13 +24,9 @@ const userRoutes = require('./routes/userRoutes.js');
 
 // --- Lógica de Rutas (Spawn) ---
 // Verifica que esta ruta sea correcta según tu estructura de carpetas
-const announcerPath = join(__dirname, 'network/announcer/discovery-announcer.js');
 
 // 'port' ahora leerá correctamente el .env
 const port = process.env.PORT || 3000;
-
-const announcer = spawn('node', [announcerPath, '--name', 'backend', '--port', port, '--secret', 'syntara'], { stdio: 'inherit' });
-
 
 // --- Lógica de Base de Datos (Corregida) ---
 async function connectDB() {
