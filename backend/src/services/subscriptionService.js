@@ -6,24 +6,21 @@ const SearchRepository = require("../repositories/searchRepo");
 
 class SubscriptionService {
     constructor() {
-        this.subscriptionRepo = SubscriptionRepository; // <-- CORREGIDO
-        this.userRepo = UserRepository; // <-- CORREGIDO
-        this.searchRepo = SearchRepository; // <-- CORREGID
+        this.subRepo = new SubscriptionRepository(); // [CORREGIDO] Instanciamos correctamente
+        this.userRepo = new UserRepository();        // [CORREGIDO] Instanciamos correctamente
+        this.searchRepo = SearchRepository;          // Este parece ser exportado ya instanciado en tu código original
 
         // Planes base del productos
         this.plans = {
-            Saver: {
-                price: 3000,
-                maxSearchesPerMonth: 20,
-                features: ["comparación básica", "3 tiendas"],
-            },
+            // [ELIMINADO] Plan Saver borrado por solicitud.
+
             Pro: {
-                price: 12000,
-                maxSearchesPerMonth: 200,
+                price: 18800,
+                maxSearchesPerMonth: 2000,
                 features: ["10 tiendas", "reportes", "favoritos"],
             },
             Enterprise: {
-                price: 70000,
+                price: 0, // [MODIFICADO] Ahora es costo 0 (se otorga tras contacto/comprobación)
                 maxSearchesPerMonth: 5000,
                 features: [
                     "reportes avanzados",
@@ -40,7 +37,7 @@ class SubscriptionService {
             throw new Error("El plan no existe.");
         }
 
-        // Crear una nueva suscripción
+        // Crear una nueva suscripción con los datos definidos en this.plans
         const subscription = await this.subRepo.createSubscription({
             type: planName,
             price: this.plans[planName].price,
@@ -48,14 +45,14 @@ class SubscriptionService {
             maxSearchesPerMonth: this.plans[planName].maxSearchesPerMonth
         });
 
-        // Asociar al usuario
+        // Asociar al usuario (Esto NO cambia el rol, solo el campo 'subscription')
         const updatedUser = await this.subRepo.attachSubscriptionToUser(
             userId,
             subscription._id
         );
 
         return {
-            message: "Suscripción asignada",
+            message: "Suscripción asignada exitosamente",
             user: updatedUser,
         };
     }
@@ -66,10 +63,16 @@ class SubscriptionService {
 
         const current = await this.getUserSubscription(userId);
 
-        if (current?.type === newPlan) {
+        // Si el usuario no tiene suscripción previa, usamos assignPlanToUser
+        if (!current) {
+            return this.assignPlanToUser(userId, newPlan);
+        }
+
+        if (current.type === newPlan) {
             throw new Error("El usuario ya tiene este plan.");
         }
 
+        // Actualizamos la suscripción existente con los nuevos valores (precio 0 si es Enterprise)
         const updated = await this.subRepo.updateSubscription(current._id, {
             type: newPlan,
             price: plan.price,
@@ -77,7 +80,7 @@ class SubscriptionService {
             maxSearchesPerMonth: plan.maxSearchesPerMonth
         });
 
-        return { message: "Plan actualizado", subscription: updated };
+        return { message: "Plan actualizado correctamente", subscription: updated };
     }
 
     async getUserSubscription(userId) {
