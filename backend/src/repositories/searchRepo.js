@@ -15,12 +15,11 @@ class SearchRepository {
             .exec();
     }
 
-    // [MODIFICADO] Ahora populamos 'results' para traer los productos reales
     async findUserHistory(userId, limit = 20) {
         return SearchModel.find({ userId })
             .sort({ timestamp: -1 })
             .limit(limit)
-            .populate("results") // <--- CLAVE: Trae los objetos PriceRecord
+            .populate("results")
             .exec();
     }
 
@@ -32,10 +31,6 @@ class SearchRepository {
         ).exec();
     }
 
-    /**
-     * Cuenta las búsquedas de un usuario en el mes actual.
-     * Útil para límites mensuales en SubscriptionService.
-     */
     async countSearchesThisMonth(userId) {
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -48,16 +43,44 @@ class SearchRepository {
         if (userId) {
             filter.userId = new mongoose.Types.ObjectId(userId);
         } else {
-            // si no hay userId, contar búsquedas sin usuario
             filter.userId = null;
         }
 
         return SearchModel.countDocuments(filter).exec();
     }
 
-    // [NUEVO] Borrar historial de un usuario
     async deleteUserHistory(userId) {
         return SearchModel.deleteMany({ userId: userId }).exec();
+    }
+
+    // [NUEVO] Obtener productos más buscados (Demanda) donde aparece mi tienda
+    // Cruza las búsquedas con los registros de precios para filtrar por tienda
+    async findTopSearchedProductsByStore(storeName, limit = 10) {
+        return await SearchModel.aggregate([
+            {
+                $lookup: {
+                    from: "pricerecords", // Colección de PriceRecords en Mongo
+                    localField: "results",
+                    foreignField: "_id",
+                    as: "resultDetails"
+                }
+            },
+            {
+                $match: {
+                    // Filtramos búsquedas que arrojaron al menos un resultado de "mi tienda"
+                    "resultDetails.store": new RegExp(storeName, "i")
+                }
+            },
+            {
+                $group: {
+                    _id: "$query.product", // Agrupamos por el término buscado (Producto/Categoría)
+                    searchCount: { $sum: 1 }, // Frecuencia de búsqueda (Demanda)
+                    lastSearchDate: { $max: "$timestamp" }
+                }
+            },
+            { $sort: { searchCount: -1 } }, // Los más buscados primero
+            { $limit: limit }
+        ]);
     }
 }
 

@@ -22,7 +22,9 @@ class PriceRecordRepository {
     }
 
     async findLatestByProduct(normalizedProduct, limit = 10) {
-        return PriceRecordModel.find({ normalizedProduct })
+        // Búsqueda flexible por regex
+        const regex = new RegExp(normalizedProduct, "i");
+        return PriceRecordModel.find({ normalizedProduct: { $regex: regex } })
             .sort({ date: -1 })
             .limit(limit)
             .exec();
@@ -32,30 +34,21 @@ class PriceRecordRepository {
         return PriceRecordModel.findOne({ normalizedProduct, store }).exec();
     }
 
-    /**
-     * Devuelve el histórico completo (o por rango) de precios para un producto.
-     * Útil para generar reportes de inteligencia de mercado.
-     */
     async getHistoricalPrices(normalizedProduct, limit = 0) {
-        const q = { normalizedProduct };
-        const query = PriceRecordModel.find(q).sort({ date: 1 }); // ascendente por fecha
+        const regex = new RegExp(normalizedProduct, "i");
+        const q = { normalizedProduct: { $regex: regex } };
+
+        const query = PriceRecordModel.find(q).sort({ date: 1 });
         if (limit && limit > 0) query.limit(limit);
         return query.exec();
     }
 
-    /**
-     * Obtiene la lista de nombres normalizados de productos que una tienda específica tiene registrados.
-     */
     async findDistinctProductsByStore(storeName) {
         return await PriceRecordModel.distinct("normalizedProduct", {
-            store: new RegExp(`^${storeName}$`, "i") // Búsqueda insensible a mayúsculas
+            store: new RegExp(`^${storeName}$`, "i")
         });
     }
 
-    /**
-     * Busca los registros más recientes para una lista de productos.
-     * Esto trae "todo lo que hay en la base de datos" sobre esos productos (tienda propia y competencia).
-     */
     async findLatestPricesForManyProducts(productList) {
         return await PriceRecordModel.aggregate([
             {
@@ -63,20 +56,38 @@ class PriceRecordRepository {
                     normalizedProduct: { $in: productList }
                 }
             },
-            {
-                $sort: { date: -1 } // Ordenar por fecha descendente
-            },
+            { $sort: { date: -1 } },
             {
                 $group: {
-                    _id: {
-                        product: "$normalizedProduct",
-                        store: "$store"
-                    },
-                    doc: { $first: "$$ROOT" } // Nos quedamos con el registro más reciente por (producto + tienda)
+                    _id: { product: "$normalizedProduct", store: "$store" },
+                    doc: { $first: "$$ROOT" }
                 }
             },
+            { $replaceRoot: { newRoot: "$doc" } }
+        ]);
+    }
+
+    // [NUEVO] Obtener historial agrupado para una lista de productos (Evolución de Precios)
+    async getPriceHistoryMany(productNames) {
+        return await PriceRecordModel.aggregate([
             {
-                $replaceRoot: { newRoot: "$doc" } // Aplanamos la estructura
+                $match: { normalizedProduct: { $in: productNames } }
+            },
+            { $sort: { date: 1 } },
+            {
+                $group: {
+                    _id: "$normalizedProduct", // Agrupamos por producto
+                    history: {
+                        $push: {
+                            price: "$price",
+                            date: "$date",
+                            store: "$store"
+                        }
+                    },
+                    avgPrice: { $avg: "$price" },
+                    minPrice: { $min: "$price" },
+                    maxPrice: { $max: "$price" }
+                }
             }
         ]);
     }

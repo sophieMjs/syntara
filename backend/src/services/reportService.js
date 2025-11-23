@@ -1,31 +1,24 @@
-// services/reportService.js
-// ReportService corregido: imports, uso correcto de repositorios y builders/parsers.
+// backend/src/services/reportService.js
 
 const PromptBuilderFactory = require("../factories/promptBuilderFactory");
-const OpenAIService = require("./openaiService");
+// const OpenAIService = require("./openaiService"); // ELIMINADO
 
-// Repositorios (usar los nombres que tienes)
-const ReportRepository = require("../repositories/reportRepo"); // clase -> instanciar
-const PriceRecordRepo = require("../repositories/priceRepo"); // instancia exportada
-const SearchRepo = require("../repositories/searchRepo"); // instancia exportada
+const ReportRepository = require("../repositories/reportRepo");
+const PriceRecordRepo = require("../repositories/priceRepo");
+const SearchRepo = require("../repositories/searchRepo");
 
 class ReportService {
     constructor() {
         this.reportRepo = new ReportRepository();
-        this.priceRepo = PriceRecordRepo; // ya es instancia
-        this.searchRepo = SearchRepo; // ya es instancia
+        this.priceRepo = PriceRecordRepo;
+        this.searchRepo = SearchRepo;
 
         this.promptFactory = new PromptBuilderFactory();
-        this.openAI = OpenAIService; // tu servicio OpenAI central
+        // this.openAI = OpenAIService; // ELIMINADO
     }
 
-    /**
-     * Genera un reporte de comparación de precios para un producto.
-     * - Busca datos históricos/últimos precios desde priceRepo
-     * - Construye prompt con PromptBuilderFactory
-     * - Llama a OpenAIService para análisis
-     * - Guarda el resultado en ReportModel (reportRepo)
-     */
+    // --- Reportes Anteriores (Sin IA) ---
+
     async generatePriceComparisonReport(userId, product) {
         const reportRecord = await this.reportRepo.createReport({
             userId,
@@ -33,47 +26,31 @@ class ReportService {
             status: "pending"
         });
 
-        // 1. Obtener datos recientes/históricos desde priceRepo
-        // PriceRecordRepo espera normalizedProduct
         const normalized = (product || "").toLowerCase().trim();
-        // traer últimos 50 registros (si existen)
-        const priceData = await this.priceRepo.findLatestByProduct(normalized, 50);
+        const priceData = await this.priceRepo.findLatestByProduct(normalized, 100);
 
-        // 2. Crear el prompt usando Factory Pattern (report builder)
-        const builder = this.promptFactory.getPromptBuilder("report");
-        const prompt = builder.buildPriceSummaryPrompt({
-            product,
-            storeData: priceData
-        });
+        let analysisText = "";
+        if (priceData.length > 0) {
+            const prices = priceData.map(p => p.price);
+            const minPrice = Math.min(...prices);
+            const maxPrice = Math.max(...prices);
+            analysisText = `Análisis para "${product}": Se encontraron ${priceData.length} resultados. Rango: $${minPrice} - $${maxPrice}.`;
+        } else {
+            analysisText = `No se encontraron registros para "${product}".`;
+        }
 
-        // 3. Llamar a OpenAI para análisis avanzado
-        const analysisText = await this.openAI.sendPrompt(prompt);
-
-        // 4. Guardar reporte como ready con data + análisis
         await this.reportRepo.updateStatus(
             reportRecord._id,
             "ready",
-            null, // downloadUrl
-            {
-                product,
-                prices: priceData,
-                analysis: analysisText
-            }
+            null,
+            { product, prices: priceData, analysis: analysisText }
         );
 
-        return {
-            message: "Reporte generado",
-            reportId: reportRecord._id,
-            analysis: analysisText
-        };
+        return { message: "Reporte generado", reportId: reportRecord._id, analysis: analysisText, data: priceData };
     }
 
-    /**
-     * Genera un reporte de inteligencia de mercado (histórico)
-     */
     async generateMarketIntelligenceReport(userId, product) {
         const normalized = (product || "").toLowerCase().trim();
-        // obtener histórico completo (método añadido en priceRepo)
         const records = await this.priceRepo.getHistoricalPrices(normalized);
 
         const reportRecord = await this.reportRepo.createReport({
@@ -82,34 +59,19 @@ class ReportService {
             status: "pending"
         });
 
-        const builder = this.promptFactory.getPromptBuilder("report");
-        const prompt = builder.buildMarketIntelligencePrompt(records);
-
-        const aiAnalysis = await this.openAI.sendPrompt(prompt);
+        const analysisText = `Historial de "${product}": ${records.length} registros encontrados.`;
 
         await this.reportRepo.updateStatus(
             reportRecord._id,
             "ready",
             null,
-            {
-                product,
-                history: records,
-                analysis: aiAnalysis
-            }
+            { product, history: records, analysis: analysisText }
         );
 
-        return {
-            message: "Reporte de inteligencia generado",
-            reportId: reportRecord._id,
-        };
+        return { message: "Reporte Histórico generado", reportId: reportRecord._id, data: records };
     }
 
-    /**
-     * Genera un reporte de monitoreo de competencia para una empresa (cadena).
-     * Compara los productos de 'myStore' contra el resto del mercado disponible en BD.
-     */
     async generateCompanyMonitorReport(userId, myStoreName) {
-        // 1. Crear registro del reporte
         const reportRecord = await this.reportRepo.createReport({
             userId,
             query: `Monitor Competencia: ${myStoreName}`,
@@ -117,81 +79,106 @@ class ReportService {
         });
 
         try {
-            // 2. Identificar qué productos tiene mi tienda en la base de datos
             const myProducts = await this.priceRepo.findDistinctProductsByStore(myStoreName);
+            if (!myProducts.length) throw new Error(`No hay productos para ${myStoreName}`);
 
-            if (!myProducts || myProducts.length === 0) {
-                throw new Error(`No se encontraron productos registrados para la tienda: ${myStoreName}`);
-            }
-
-            // 3. Buscar todos los precios (míos y de la competencia) para esos productos
             const allRecords = await this.priceRepo.findLatestPricesForManyProducts(myProducts);
-
-            // 4. Procesar y Estructurar los datos para el Frontend (Tabla y Gráfica)
-            // Estructura deseada: { producto, miPrecio, miFecha, competidores: [ {tienda, precio, diff, fecha} ] }
-
             const comparisonMap = {};
 
-            // Inicializar mapa con mis productos
             myProducts.forEach(prod => {
-                comparisonMap[prod] = {
-                    productName: prod, // Nombre normalizado
-                    myStore: myStoreName,
-                    myPrice: null,
-                    myDate: null,
-                    competitors: []
-                };
+                comparisonMap[prod] = { productName: prod, myStore: myStoreName, myPrice: null, competitors: [] };
             });
 
-            // Llenar datos
+            const myStoreRegex = new RegExp(myStoreName, "i");
+
             allRecords.forEach(record => {
                 const pName = record.normalizedProduct;
+                if (!comparisonMap[pName]) return;
 
-                if (!comparisonMap[pName]) return; // Por si acaso
-
-                // Si es mi tienda (comparación flexible para evitar errores de mayúsculas/minúsculas)
-                if (record.store.toLowerCase() === myStoreName.toLowerCase()) {
+                if (myStoreRegex.test(record.store)) {
                     comparisonMap[pName].myPrice = record.price;
                     comparisonMap[pName].myDate = record.date;
-                    // Usamos el nombre bonito del registro si está disponible
-                    comparisonMap[pName].displayProduct = record.product;
                 } else {
-                    // Si es competencia
                     comparisonMap[pName].competitors.push({
-                        store: record.store,
-                        price: record.price,
-                        date: record.date,
-                        url: record.url
+                        store: record.store, price: record.price, date: record.date
                     });
                 }
             });
 
-            // Convertir mapa a array y filtrar solo los que tienen datos útiles
-            const reportData = Object.values(comparisonMap).filter(item => {
-                // Opcional: Mostrar solo si tengo precio O si hay competidores
-                return item.myPrice !== null || item.competitors.length > 0;
-            });
+            const reportData = Object.values(comparisonMap).filter(i => i.myPrice !== null || i.competitors.length > 0);
+            const analysisText = `Monitor: ${reportData.length} productos analizados.`;
 
-            // 5. Análisis básico (sin gastar tokens excesivos)
-            const analysisText = `Reporte generado para ${reportData.length} productos. Los datos incluyen comparativa directa con tiendas encontradas en la base de datos.`;
-
-            // 6. Guardar reporte
             await this.reportRepo.updateStatus(
                 reportRecord._id,
                 "ready",
                 null,
+                { myStore: myStoreName, totalProducts: reportData.length, results: reportData, analysis: analysisText }
+            );
+
+            return { message: "Monitor de Competencia generado", reportId: reportRecord._id, data: reportData };
+        } catch (error) {
+            await this.reportRepo.updateStatus(reportRecord._id, "failed");
+            throw error;
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // [NUEVO] Reporte de Distribuidor (Inteligencia de Mercado - Tendencias)
+    // ---------------------------------------------------------------------------
+    async generateDistributorIntelligenceReport(userId, storeName) {
+        const reportRecord = await this.reportRepo.createReport({
+            userId,
+            query: `Inteligencia Distribuidor: ${storeName}`,
+            status: "pending"
+        });
+
+        try {
+            // 1. DEMANDA: Obtener los productos más buscados relacionados con esta tienda
+            const topSearches = await this.searchRepo.findTopSearchedProductsByStore(storeName, 20);
+
+            if (!topSearches || topSearches.length === 0) {
+                throw new Error(`No hay suficientes datos de búsqueda para generar tendencias de ${storeName}.`);
+            }
+
+            const topProductNames = topSearches.map(s => s._id); // Array de nombres de productos
+
+            // 2. EVOLUCIÓN DE PRECIOS: Obtener historial para esos productos top
+            const priceEvolution = await this.priceRepo.getPriceHistoryMany(topProductNames);
+
+            // 3. Combinar datos
+            const trendsData = topSearches.map(searchItem => {
+                const historyData = priceEvolution.find(h => h._id === searchItem._id);
+                return {
+                    product: searchItem._id, // Categoría/Marca/Producto
+                    demandScore: searchItem.searchCount, // Cuántas veces se buscó
+                    lastSearch: searchItem.lastSearchDate,
+                    priceStats: {
+                        avg: historyData?.avgPrice || 0,
+                        min: historyData?.minPrice || 0,
+                        max: historyData?.maxPrice || 0
+                    },
+                    priceHistory: historyData?.history || [] // Evolución temporal
+                };
+            });
+
+            const analysisText = `Reporte de Tendencias: Se identificaron ${trendsData.length} productos de alta demanda (más buscados) para ${storeName}.`;
+
+            // 4. Guardar
+            await this.reportRepo.updateStatus(
+                reportRecord._id,
+                "ready",
+                null, // downloadUrl se generaría aquí si tuvieramos PDF
                 {
-                    myStore: myStoreName,
-                    totalProducts: reportData.length,
-                    results: reportData,
+                    store: storeName,
+                    trends: trendsData, // Lista con demanda y evolución de precios
                     analysis: analysisText
                 }
             );
 
             return {
-                message: "Reporte de monitoreo generado",
+                message: "Reporte de Inteligencia de Distribuidor generado",
                 reportId: reportRecord._id,
-                data: reportData
+                data: trendsData
             };
 
         } catch (error) {

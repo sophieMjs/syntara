@@ -72,6 +72,8 @@ class AuthService {
             console.log("[DEBUG LOGIN] ¡Login exitoso! Generando token.");
             const token = this.generateToken(user);
 
+            const hasActiveSubscription = !!user.subscription;
+
             return {
                 message: "Login exitoso",
                 token,
@@ -80,7 +82,8 @@ class AuthService {
                     name: user.name,
                     lastname: user.lastname,
                     email: user.email,
-                    role: user.role
+                    role: user.role,
+                    isSubscribed: hasActiveSubscription
                 }
             };
         } catch (err) {
@@ -89,7 +92,6 @@ class AuthService {
         }
     }
 
-// ... (resto del archivo) ...
 
 
     generateToken(user) {
