@@ -190,8 +190,7 @@ REGLAS FLEXIBLES (OBLIGATORIO CUMPLIRLAS):
 - No te limites jamás a un solo resultado: si hay varios precios o presentaciones razonablemente relacionadas con PRODUCTO, devuélvelos todos, hasta MAX_RESULTS. Apunta explícitamente a devolver como mínimo MIN_TARGET resultados siempre que sea posible.
 
 - La presentación es válida si:
-  * Coincide exactamente con PRESENTACION, o
-  * Coincide parcialmente y es claramente el mismo tipo de producto, o
+  * Coincide exactamente con PRESENTACION,
   * Tiene equivalencias típicas de unidad: unidad, pieza, barra, paquete, caja, bolsa, sobre, botella, lata, etc., o
   * El peso/volumen es similar dentro de una tolerancia AMPLIA (por ejemplo ±20 %) respecto a CANTIDAD, o
   * Es un multipack donde sea razonable asumir que el contenido total o por unidad es cercano a la presentación buscada.

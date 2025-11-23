@@ -1,76 +1,110 @@
 // services/searchService.js
 const PromptBuilderFactory = require("../factories/promptBuilderFactory");
-// Ya no necesitas ParserFactory aquí
 const SearchRepository = require("../repositories/searchRepo");
 const PriceRecordRepository = require("../repositories/priceRepo");
 const OpenAIAdapter = require("../adapters/openAIAdapter");
 
 class SearchService {
     constructor() {
-        console.log("🛠️ [SearchService] Constructor iniciado."); // LOG CONSTRUCTOR START
+        console.log("🛠️ [SearchService] Constructor iniciado.");
         this.promptFactory = new PromptBuilderFactory();
-        // this.parserFactory = new ParserFactory(); // <== ELIMINAR
         this.searchRepo = SearchRepository;
         this.priceRepo = PriceRecordRepository;
         this.ai = new OpenAIAdapter();
-        console.log("🛠️ [SearchService] OpenAIAdapter inicializado."); // LOG ADAPTER INIT
+        console.log("🛠️ [SearchService] OpenAIAdapter inicializado.");
     }
 
-    // 💡 CORRECCIÓN: Añadir clientDate a la firma para recibir la hora del PC
     async search({ userId, product, quantity = 1, unit = null, clientDate = null }) {
+        console.log("➡️ [SearchService] Ejecución del método search iniciada.");
 
-        console.log("➡️ [SearchService] 4. Ejecución del método search iniciada."); // LOG METHOD START
-
-        // 1️⃣ Construir el prompt
+        // 1. Construir prompt
         const builder = this.promptFactory.getPromptBuilder("search");
-        // El builder ya no recibe 'stores'
-        const prompt = builder.buildPrompt({product, quantity, unit});
+        const prompt = builder.buildPrompt({ product, quantity, unit });
 
-        console.log("➡️ [SearchService] 5. Prompt construido. Llamando a la IA..."); // LOG ANTES DE LA LLAMADA EXTERNA
+        console.log("➡️ [SearchService] Prompt construido. Llamando a la IA...");
 
-        // 2️⃣ Enviar al modelo Y PARSEAR (ahora lo hace el adapter)
-        // El Adapter ya devuelve PriceRecordEntity[]
+        // 2. Llamar IA
         const priceRecords = await this.ai.toPriceRecords(prompt);
 
-        console.log("✅ [SearchService] 6. Respuesta de IA recibida y parseada."); // LOG DESPUÉS DE LA LLAMADA EXTERNA
+        console.log("✅ [SearchService] Respuesta de IA recibida y parseada.");
 
-        // 💡 PASO CLAVE: Determinar la fecha a guardar. Si clientDate existe, úsalo. Si no, usa la fecha del servidor.
-        // new Date() interpretará el string ISO que viene del front correctamente.
         const dateToSave = clientDate ? new Date(clientDate) : new Date();
 
-        // 3️⃣ Guardar registros en BD
+        // 3. Guardar PriceRecords
         const savedRecords = [];
         for (const entity of priceRecords) {
-            // El repo espera un objeto simple, no una clase
             const record = await this.priceRepo.create({
-                ...entity, // Usamos la entidad que ya creó el Adapter
+                ...entity,
                 normalizedProduct: entity.normalizedProduct || entity.product.toLowerCase(),
-                // 💡 CORRECCIÓN: Usar la fecha del cliente/servidor definida arriba
                 date: dateToSave,
             });
             savedRecords.push(record);
         }
 
-        // 4️⃣ Registrar búsqueda
+        // 4. Registrar búsqueda
         const searchLog = await this.searchRepo.create({
             userId,
-            query: {        // <--- AÑADIR ESTO
+            query: {
                 product,
                 quantity,
                 unit
-            },              // <--- AÑADIR ESTO
+            },
             results: savedRecords.map(r => r._id),
             timestamp: dateToSave
         });
 
-        console.log("✅ [SearchService] 7. Logs de búsqueda guardados. Retornando...");
-
+        console.log("✅ [SearchService] Logs guardados.");
 
         return {
             searchId: searchLog._id,
             product,
             results: savedRecords
         };
+    }
+
+    // [MODIFICADO] Obtener historial "expandido" con los objetos devueltos
+// [CORREGIDO] Obtener historial "expandido" con los objetos devueltos
+    async getUserHistory(userId) {
+        const historyDocs = await this.searchRepo.findUserHistory(userId);
+        const flattenedHistory = [];
+
+        // Recorremos cada búsqueda guardada
+        historyDocs.forEach(doc => {
+            // Si la búsqueda tuvo resultados (objetos encontrados)
+            if (doc.results && doc.results.length > 0) {
+                // Creamos una entrada en el historial por CADA producto encontrado
+                doc.results.forEach(record => {
+                    flattenedHistory.push({
+                        id: doc._id,
+                        product: record.product, // Nombre real del producto encontrado
+                        store: record.store,     // <--- AGREGADO: Tienda (ej: Exito)
+                        price: record.price,     // <--- AGREGADO: Precio
+                        url: record.url,         // <--- AGREGADO: URL del producto
+                        quantity: doc.query.quantity,
+                        unit: doc.query.unit,
+                        date: doc.timestamp
+                    });
+                });
+            } else {
+                // Caso fallback: búsqueda sin resultados
+                flattenedHistory.push({
+                    id: doc._id,
+                    product: doc.query.product,
+                    store: "No encontrado",
+                    price: 0,
+                    url: null,
+                    quantity: doc.query.quantity,
+                    unit: doc.query.unit,
+                    date: doc.timestamp
+                });
+            }
+        });
+
+        return flattenedHistory;
+    }
+
+    async clearUserHistory(userId) {
+        return this.searchRepo.deleteUserHistory(userId);
     }
 }
 

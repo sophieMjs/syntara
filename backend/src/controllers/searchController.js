@@ -49,3 +49,34 @@ exports.search = async (req, res) => {
         });
     }
 };
+
+exports.getHistory = async (req, res) => {
+    try {
+        const userId = req.user.id; // Viene del authMiddleware
+        const history = await searchService.getUserHistory(userId);
+
+        res.status(200).json({
+            success: true,
+            data: history
+        });
+    } catch (error) {
+        console.error("Error obteniendo historial:", error);
+        res.status(500).json({ success: false, message: "Error al obtener el historial" });
+    }
+};
+
+// [NUEVO] Borrar historial del usuario
+exports.clearHistory = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        await searchService.clearUserHistory(userId);
+
+        res.status(200).json({
+            success: true,
+            message: "Historial eliminado correctamente"
+        });
+    } catch (error) {
+        console.error("Error borrando historial:", error);
+        res.status(500).json({ success: false, message: "Error al borrar el historial" });
+    }
+};
