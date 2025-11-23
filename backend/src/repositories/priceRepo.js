@@ -42,6 +42,44 @@ class PriceRecordRepository {
         if (limit && limit > 0) query.limit(limit);
         return query.exec();
     }
+
+    /**
+     * Obtiene la lista de nombres normalizados de productos que una tienda específica tiene registrados.
+     */
+    async findDistinctProductsByStore(storeName) {
+        return await PriceRecordModel.distinct("normalizedProduct", {
+            store: new RegExp(`^${storeName}$`, "i") // Búsqueda insensible a mayúsculas
+        });
+    }
+
+    /**
+     * Busca los registros más recientes para una lista de productos.
+     * Esto trae "todo lo que hay en la base de datos" sobre esos productos (tienda propia y competencia).
+     */
+    async findLatestPricesForManyProducts(productList) {
+        return await PriceRecordModel.aggregate([
+            {
+                $match: {
+                    normalizedProduct: { $in: productList }
+                }
+            },
+            {
+                $sort: { date: -1 } // Ordenar por fecha descendente
+            },
+            {
+                $group: {
+                    _id: {
+                        product: "$normalizedProduct",
+                        store: "$store"
+                    },
+                    doc: { $first: "$$ROOT" } // Nos quedamos con el registro más reciente por (producto + tienda)
+                }
+            },
+            {
+                $replaceRoot: { newRoot: "$doc" } // Aplanamos la estructura
+            }
+        ]);
+    }
 }
 
 module.exports = new PriceRecordRepository();

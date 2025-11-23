@@ -16,6 +16,12 @@ router.post("/intelligence",
     (req, res) => ReportController.marketIntelligence(req, res)
 );
 
+// [NUEVO] Ruta para Monitoreo de Empresa (Competencia)
+router.post("/company-monitor",
+    authMiddleware.required,
+    (req, res) => ReportController.companyMonitor(req, res)
+);
+
 router.get("/:id",
     authMiddleware.required,
     (req, res) => ReportController.getReport(req, res)

@@ -54,6 +54,38 @@ class ReportController {
         }
     }
 
+    // Nuevo método para monitoreo de competencia
+    async companyMonitor(req, res) {
+        try {
+            // El nombre de la tienda a analizar (ej: "Exito", "D1")
+            const { storeName } = req.body;
+
+            if (!storeName) {
+                return res.status(400).json({ error: "Se requiere el nombre de la tienda (storeName)." });
+            }
+
+            // Validar suscripción Enterprise
+            const sub = await subscriptionService.getUserSubscription(req.user.id);
+
+            if (!sub || (sub.type !== "Enterprise")) {
+                // Si decides permitirlo en Pro, cambia esto
+                return res.status(403).json({
+                    error: "Esta función requiere un plan Enterprise."
+                });
+            }
+
+            const result = await reportService.generateCompanyMonitorReport(
+                req.user.id,
+                storeName
+            );
+
+            res.json(result);
+
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    }
+
     async getReport(req, res) {
         try {
             const report = await reportService.getReport(req.params.id);

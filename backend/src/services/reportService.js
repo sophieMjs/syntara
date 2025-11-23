@@ -104,6 +104,102 @@ class ReportService {
         };
     }
 
+    /**
+     * Genera un reporte de monitoreo de competencia para una empresa (cadena).
+     * Compara los productos de 'myStore' contra el resto del mercado disponible en BD.
+     */
+    async generateCompanyMonitorReport(userId, myStoreName) {
+        // 1. Crear registro del reporte
+        const reportRecord = await this.reportRepo.createReport({
+            userId,
+            query: `Monitor Competencia: ${myStoreName}`,
+            status: "pending"
+        });
+
+        try {
+            // 2. Identificar qué productos tiene mi tienda en la base de datos
+            const myProducts = await this.priceRepo.findDistinctProductsByStore(myStoreName);
+
+            if (!myProducts || myProducts.length === 0) {
+                throw new Error(`No se encontraron productos registrados para la tienda: ${myStoreName}`);
+            }
+
+            // 3. Buscar todos los precios (míos y de la competencia) para esos productos
+            const allRecords = await this.priceRepo.findLatestPricesForManyProducts(myProducts);
+
+            // 4. Procesar y Estructurar los datos para el Frontend (Tabla y Gráfica)
+            // Estructura deseada: { producto, miPrecio, miFecha, competidores: [ {tienda, precio, diff, fecha} ] }
+
+            const comparisonMap = {};
+
+            // Inicializar mapa con mis productos
+            myProducts.forEach(prod => {
+                comparisonMap[prod] = {
+                    productName: prod, // Nombre normalizado
+                    myStore: myStoreName,
+                    myPrice: null,
+                    myDate: null,
+                    competitors: []
+                };
+            });
+
+            // Llenar datos
+            allRecords.forEach(record => {
+                const pName = record.normalizedProduct;
+
+                if (!comparisonMap[pName]) return; // Por si acaso
+
+                // Si es mi tienda (comparación flexible para evitar errores de mayúsculas/minúsculas)
+                if (record.store.toLowerCase() === myStoreName.toLowerCase()) {
+                    comparisonMap[pName].myPrice = record.price;
+                    comparisonMap[pName].myDate = record.date;
+                    // Usamos el nombre bonito del registro si está disponible
+                    comparisonMap[pName].displayProduct = record.product;
+                } else {
+                    // Si es competencia
+                    comparisonMap[pName].competitors.push({
+                        store: record.store,
+                        price: record.price,
+                        date: record.date,
+                        url: record.url
+                    });
+                }
+            });
+
+            // Convertir mapa a array y filtrar solo los que tienen datos útiles
+            const reportData = Object.values(comparisonMap).filter(item => {
+                // Opcional: Mostrar solo si tengo precio O si hay competidores
+                return item.myPrice !== null || item.competitors.length > 0;
+            });
+
+            // 5. Análisis básico (sin gastar tokens excesivos)
+            const analysisText = `Reporte generado para ${reportData.length} productos. Los datos incluyen comparativa directa con tiendas encontradas en la base de datos.`;
+
+            // 6. Guardar reporte
+            await this.reportRepo.updateStatus(
+                reportRecord._id,
+                "ready",
+                null,
+                {
+                    myStore: myStoreName,
+                    totalProducts: reportData.length,
+                    results: reportData,
+                    analysis: analysisText
+                }
+            );
+
+            return {
+                message: "Reporte de monitoreo generado",
+                reportId: reportRecord._id,
+                data: reportData
+            };
+
+        } catch (error) {
+            await this.reportRepo.updateStatus(reportRecord._id, "failed");
+            throw error;
+        }
+    }
+
     async getReport(reportId) {
         return this.reportRepo.getReport(reportId);
     }
