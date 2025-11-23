@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema({
     lastname: { type: String, required: true, trim: true }, // <-- AÑADIDO
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['user', 'admin'], default: 'user' },
+    role: { type: String, enum: ['user', 'admin', 'business'], default: 'user' },
     subscription: { type: mongoose.Schema.Types.ObjectId, ref: 'Subscription', default: null },
     createdAt: { type: Date, default: Date.now }
 });
