@@ -4,21 +4,21 @@ const { PriceRecordEntity } = require("../models/PriceRecord");
 
 class OpenAIAdapter {
     constructor() {
-        console.log("⚙️ [OpenAIAdapter] Constructor ejecutado.");
+        console.log(" [OpenAIAdapter] Constructor ejecutado.");
 
         if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY === "") {
-            console.error("❌ ERROR: Falta OPENAI_API_KEY.");
+            console.error(" ERROR: Falta OPENAI_API_KEY.");
             throw new Error("Variable OPENAI_API_KEY ausente.");
         }
 
         this.client = new OpenAIClient();
         this.parserFactory = new ParserFactory();
 
-        console.log("⚙️ [OpenAIAdapter] Cliente y parser inicializados.");
+        console.log("️ [OpenAIAdapter] Cliente y parser inicializados.");
     }
 
     async toPriceRecords(prompt) {
-        console.log("➡️ [OpenAIAdapter] Solicitando a OpenAI...");
+        console.log(" [OpenAIAdapter] Solicitando a OpenAI...");
 
         let finalResponse;
 
@@ -29,7 +29,7 @@ class OpenAIAdapter {
             throw new Error("No se pudo obtener respuesta de OpenAI.");
         }
 
-        console.log("📥 [OpenAIAdapter] Respuesta final recibida de OpenAI:");
+        console.log(" [OpenAIAdapter] Respuesta final recibida de OpenAI:");
         console.log(finalResponse);
 
         try {
@@ -38,7 +38,7 @@ class OpenAIAdapter {
             const content = finalResponse?.raw?.output_text || finalResponse?.text;
 
             if (!content || content.trim() === "") {
-                console.error("❌ [OpenAIAdapter] El texto de respuesta está vacío.");
+                console.error(" [OpenAIAdapter] El texto de respuesta está vacío.");
                 console.log("Raw Response:", finalResponse);
                 throw new Error("OpenAI devolvió una respuesta vacía.");
             }

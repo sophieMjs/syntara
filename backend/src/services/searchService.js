@@ -6,24 +6,24 @@ const OpenAIAdapter = require("../adapters/openAIAdapter");
 
 class SearchService {
     constructor() {
-        console.log("🛠️ [SearchService] Constructor iniciado.");
+        console.log(" [SearchService] Constructor iniciado.");
         this.promptFactory = new PromptBuilderFactory();
         this.searchRepo = SearchRepository;
         this.priceRepo = PriceRecordRepository;
         this.ai = new OpenAIAdapter();
-        console.log("🛠️ [SearchService] OpenAIAdapter inicializado.");
+        console.log(" [SearchService] OpenAIAdapter inicializado.");
     }
 
     async search({ userId, product, quantity = 1, unit = null, clientDate = null, searchType = "search" }) {
-        console.log(`➡️ [SearchService] Búsqueda iniciada. Tipo: ${searchType}`);
+        console.log(` [SearchService] Búsqueda iniciada. Tipo: ${searchType}`);
 
         const builder = this.promptFactory.getPromptBuilder(searchType);
         const prompt = builder.buildPrompt({ product, quantity, unit });
-        console.log("➡️ [SearchService] Prompt construido. Llamando a la IA...");
+        console.log("️ [SearchService] Prompt construido. Llamando a la IA...");
 
         const priceRecords = await this.ai.toPriceRecords(prompt);
 
-        console.log("✅ [SearchService] Respuesta de IA recibida y parseada.");
+        console.log(" [SearchService] Respuesta de IA recibida y parseada.");
 
         const dateToSave = clientDate ? new Date(clientDate) : new Date();
 
@@ -48,7 +48,7 @@ class SearchService {
             timestamp: dateToSave
         });
 
-        console.log("✅ [SearchService] Logs guardados.");
+        console.log(" [SearchService] Logs guardados.");
 
         return {
             searchId: searchLog._id,

@@ -59,7 +59,7 @@ class OpenAIClient {
 
 
             if (webSearchResults.length > 0) {
-                console.log("🔎 web_search results (count):", webSearchResults.length);
+                console.log(" web_search results (count):", webSearchResults.length);
 
                 webSearchResults.forEach((w, i) => {
                     const url = w.url || w.link || w.uri || null;
@@ -68,7 +68,7 @@ class OpenAIClient {
                     console.log(`  [${i}] ${title || "(sin título)"} - ${url} - status:${status}`);
                 });
             } else {
-                console.log("🔎 No se detectaron web_search results en la respuesta.");
+                console.log(" No se detectaron web_search results en la respuesta.");
             }
 
             return {

@@ -10,9 +10,9 @@ exports.search = async (req, res) => {
 
         const numericQuantity = quantity ? parseInt(quantity, 10) : undefined;
 
-        console.log("➡️ [SearchController] 1. Parámetros recibidos y validados:", { product, quantity: numericQuantity, unit, userId, clientDate });
+        console.log(" [SearchController] 1. Parámetros recibidos y validados:", { product, quantity: numericQuantity, unit, userId, clientDate });
 
-        console.log("⏳ [SearchController] 2. Llamando a searchService.search... (Esperando AWAIT)");
+        console.log(" [SearchController] 2. Llamando a searchService.search... (Esperando AWAIT)");
 
         const data = await searchService.search({
             userId,
@@ -22,7 +22,7 @@ exports.search = async (req, res) => {
             clientDate
         });
 
-        console.log("✅ [SearchController] 3. El servicio de búsqueda ha respondido.");
+        console.log(" [SearchController] 3. El servicio de búsqueda ha respondido.");
 
         console.log("[SearchController] Resultado de la búsqueda:", data);
 
@@ -32,7 +32,7 @@ exports.search = async (req, res) => {
             data
         });
     } catch (error) {
-        console.error("❌ [SearchController] ERROR atrapado:", error.message);
+        console.error(" [SearchController] ERROR atrapado:", error.message);
         console.error("[SearchController] Detalles del Error:", error);
 
         res.status(500).json({
@@ -59,7 +59,7 @@ exports.wholesaleSearch = async (req, res) => {
 
         const numericQuantity = quantity ? parseInt(quantity, 10) : undefined;
 
-        console.log("➡️ [SearchController] Búsqueda Mayorista solicitada:", { product, userId });
+        console.log(" [SearchController] Búsqueda Mayorista solicitada:", { product, userId });
 
         const data = await searchService.search({
             userId,
@@ -77,7 +77,7 @@ exports.wholesaleSearch = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("❌ [SearchController] Error en búsqueda mayorista:", error);
+        console.error(" [SearchController] Error en búsqueda mayorista:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };

@@ -12,7 +12,7 @@ class CartController {
 
     async addItem(req, res) {
         try {
-            console.log("📥 BODY QUE LLEGA AL BACKEND:", req.body);
+            console.log(" BODY QUE LLEGA AL BACKEND:", req.body);
             const updatedCart = await CartService.addItem(req.user.id, req.body);
             res.json(updatedCart);
 
