@@ -2,7 +2,7 @@ On this repository, you will only find the backend of our application, for its t
 
 Database: https://github.com/calderonDavid/Base-de-Datos-MongoDB-Syntara/tree/main 
 
-Frontend: [https://github.com/esteban-blanco-m/syntara-frontend/tree/master](https://github.com/calderonDavid/Syntara-Frontend)
+Frontend: [[https://github.com/esteban-blanco-m/syntara-frontend/tree/master](https://github.com/calderonDavid/Syntara-Frontend)](https://github.com/calderonDavid/Syntara-Frontend)
 
 
 
